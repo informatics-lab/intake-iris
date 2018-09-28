@@ -1,5 +1,5 @@
 package:
-   name: intake-iris
+   name: intake_iris
    version: {{ GIT_DESCRIBE_TAG }}
 
 source:

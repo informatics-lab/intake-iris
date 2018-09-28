@@ -6,7 +6,7 @@ import versioneer
 requires = open('requirements.txt').read().strip().split('\n')
 
 setup(
-    name='intake-iris',
+    name='intake_iris',
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
     description='iris plugins for Intake',

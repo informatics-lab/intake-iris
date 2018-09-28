@@ -1,4 +1,4 @@
-name: intake-iris
+name: intake_iris
 channels:
   - intake
   - informaticslab
@@ -6,7 +6,7 @@ channels:
 dependencies:
   - python=3.6
   - intake
-  - intake-iris
+  - intake_iris
   - pip:
     - sphinx
     - sphinx-rtd-theme

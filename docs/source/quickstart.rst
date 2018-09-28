@@ -1,7 +1,7 @@
 Quickstart
 ==========
 
-``intake-iris`` provides quick and easy access to stored in iris files.
+``intake_iris`` provides quick and easy access to stored in iris files.
 
 .. iris: https://scitools.org.uk/iris/docs/latest/
 
@@ -10,7 +10,7 @@ Installation
 
 To use this plugin for `intake`_, install with the following command::
 
-   conda install -c informaticslab intake-iris
+   conda install -c informaticslab -c intake intake_iris
 
 .. _intake: https://github.com/ContinuumIO/intake
 
