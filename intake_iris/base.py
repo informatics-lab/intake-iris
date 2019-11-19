@@ -16,14 +16,12 @@ class DataSourceMixin(DataSource):
     def _open_dataset(self):
         with warnings.catch_warnings():
             warnings.simplefilter(self.warnings)
-            if _magicthing == 'iris-cube':
+            if self._iris_object == 'iris-cube':
                 self._ds = iris.load_cube(self.urlpath, **self._kwargs)
                 self.IrisObjSource = CubeSource(self._ds)
-            elif _magicthing == 'iris-cubelist':
+            else:
                 self._ds = iris.load(self.urlpath, **self._kwargs)
                 self.IrisObjSource = CubeListSource(self._ds)
-            else:
-                raise NotImplementedError
 
     def _get_schema(self):
         """Make schema object, which embeds iris object and some details"""
@@ -33,10 +31,12 @@ class DataSourceMixin(DataSource):
 
     def read(self):
         """Load entire dataset into a container and return it"""
+        self._load_metadata()
         return self._ds
 
     def read_chunked(self):
         """Return iterator over container fragments of data source"""
+        self._load_metadata()
         return self.read()
 
     def read_partition(self, i):
@@ -45,10 +45,12 @@ class DataSourceMixin(DataSource):
         By default, assumes i should be an integer between zero and npartitions;
         override for more complex indexing schemes.
         """
+        self._load_metadata()
         return self.IrisObjSource.read_partition(i)
 
     def to_dask(self):
         """Return a dask container for this data source"""
+        self._load_metadata()
         return self.IrisObjSource.to_dask()
 
     def close(self):
@@ -87,9 +89,9 @@ class CubeListSource(object):
         """Make schema object, which embeds iris cubelist and some details"""
         metadata = {}
         self._schema = Schema(
-            datashape=self.cube.shape,
+            datashape=None,
             dtype=None,
-            shape=self.cube.shape,
+            shape=len(self.cubelist),
             npartitions=len(self.cubelist),
             extra_metadata=metadata)
         return self._schema
