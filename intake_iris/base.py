@@ -16,62 +16,86 @@ class DataSourceMixin(DataSource):
     def _open_dataset(self):
         with warnings.catch_warnings():
             warnings.simplefilter(self.warnings)
-            self._ds = iris.load(self.urlpath, **self._kwargs).concatenate()
+            if _magicthing == 'iris-cube':
+                self._ds = iris.load_cube(self.urlpath, **self._kwargs)
+                self.IrisObjSource = CubeSource(self._ds)
+            elif _magicthing == 'iris-cubelist':
+                self._ds = iris.load(self.urlpath, **self._kwargs)
+                self.IrisObjSource = CubeListSource(self._ds)
+            else:
+                raise NotImplementedError
 
     def _get_schema(self):
         """Make schema object, which embeds iris object and some details"""
         if self._ds is None:
             self._open_dataset()
-
-            metadata = {}
-            self._schema = Schema(
-                datashape=None,
-                dtype=None,
-                shape=None,
-                npartitions=None,
-                extra_metadata=metadata)
-        return self._schema
+        return self.IrisObjSource._get_schema()
 
     def read(self):
-        """Return a version of the iris cube/cubelist with all the data in memory"""
-        self._load_metadata()
-        if isinstance(self._ds, CubeList):
-            self._ds.realise_data()
-        else:
-            _ = self._ds.data
+        """Load entire dataset into a container and return it"""
         return self._ds
 
     def read_chunked(self):
-        """Return iris object (which will have chunks)"""
-        self._load_metadata()
-        return self._ds
+        """Return iterator over container fragments of data source"""
+        return self.read()
 
     def read_partition(self, i):
-        """Fetch one chunk of data at tuple index i
-        """
+        """Return a part of the data corresponding to i-th partition.
 
-        import numpy as np
-        self._load_metadata()
-        if not isinstance(i, (tuple, list)):
-            raise TypeError('For iris sources, must specify partition as '
-                            'tuple')
-        if isinstance(i, list):
-            i = tuple(i)
-        if isinstance(self._ds, CubeList):
-            arr = self._ds[i[0]].lazy_data()
-            i = i[1:]
-        else:
-            arr = self._ds.lazy_data()
-        if isinstance(arr, np.ndarray):
-            return arr
-        # dask array
-        return arr[i].compute()
+        By default, assumes i should be an integer between zero and npartitions;
+        override for more complex indexing schemes.
+        """
+        return self.IrisObjSource.read_partition(i)
 
     def to_dask(self):
-        """Return iris object where variables are dask arrays"""
-        return self.read_chunked()
+        """Return a dask container for this data source"""
+        return self.IrisObjSource.to_dask()
 
     def close(self):
         """Delete open file from memory"""
         self._ds = None
         self._schema = None
+
+
+class CubeSource(object):
+    def __init__(self, cube):
+        self.cube = cube
+
+    def _get_schema(self):
+        """Make schema object, which embeds iris cube and some details"""
+        metadata = {}
+        self._schema = Schema(
+            datashape=self.cube.shape,
+            dtype=self.cube.dtype,
+            shape=self.cube.shape,
+            npartitions=self.cube.lazy_data().chunks,
+            extra_metadata=metadata)
+        return self._schema
+
+    def read_partition(self, i):
+        return self.cube[i]
+
+    def to_dask(self):
+        return self.cube.lazy_data()
+
+
+class CubeListSource(object):
+    def __init__(self, cubelist):
+        self.cubelist = cubelist
+
+    def _get_schema(self):
+        """Make schema object, which embeds iris cubelist and some details"""
+        metadata = {}
+        self._schema = Schema(
+            datashape=self.cube.shape,
+            dtype=None,
+            shape=self.cube.shape,
+            npartitions=len(self.cubelist),
+            extra_metadata=metadata)
+        return self._schema
+
+    def read_partition(self, i):
+        return self.cubelist[i]
+
+    def to_dask(self):
+        raise NotImplementedError
