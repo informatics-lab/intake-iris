@@ -18,5 +18,6 @@ class GRIBSource(DataSourceMixin):
         self.urlpath = urlpath
         self.warnings = warnings
         self._kwargs = iris_kwargs or kwargs
+        self._iris_object = self._kwargs.pop('iris-object', 'iris-cubelist')
         self._ds = None
         super(GRIBSource, self).__init__(metadata=metadata)
